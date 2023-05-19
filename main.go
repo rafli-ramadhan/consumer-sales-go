@@ -8,9 +8,11 @@ import (
 	"time"
 	amqp "github.com/rabbitmq/amqp091-go"
 
+	"consumer-sales-go/config"
 	"consumer-sales-go/db"
-	"consumer-sales-go/model"
 	"consumer-sales-go/helpers/random"
+	"consumer-sales-go/model"
+	"consumer-sales-go/publisher"
 )
 
 func FailOnError(err error, msg string) {
@@ -26,7 +28,13 @@ type TransactionData struct {
 }
 
 func main() {
-	conn, err := amqp.Dial("amqp://guest:guest@localhost:5672/")
+	config, err := config.LoadConfig()
+	if err != nil {
+		FailOnError(err, "failed to load config")
+		return
+	}
+
+	conn, err := amqp.Dial(config.RabbitMQURL)	
 	FailOnError(err, "Failed to connect to RabbitMQ")
 	defer conn.Close()
 
@@ -69,11 +77,11 @@ func main() {
 				FailOnError(err, "error unmarshal")
 			}
 
-			_, err = CreateBulkTransactionDetail(data.Voucher, data.ListTransactionDetail, data.Req)
+			res, err := CreateBulkTransactionDetail(data.Voucher, data.ListTransactionDetail, data.Req)
 			if err != nil {
-				log.Print(err)
+				FailOnError(err, "error create bulk transaction detail")
 			}
-
+			publisher.Publish(res)
 			d.Ack(false)
 		}
 	}()
@@ -129,7 +137,6 @@ func CreateBulkTransactionDetail(voucher model.VoucherRequest, listTransactionDe
 		return
 	}
 
-	log.Print("PASS 1")
 	var lastIDTransaction int32
 	err = stmt.QueryRowContext(ctx, randomInteger, req.Name, quantity, discount, total, req.Pay).Scan(&lastIDTransaction)
 	if err != nil {
@@ -137,14 +144,12 @@ func CreateBulkTransactionDetail(voucher model.VoucherRequest, listTransactionDe
 		return
 	}
 
-	log.Print("PASS 2")
 	query2 := `INSERT INTO transaction_detail (transaction_id, item, price, quantity, total) values ($1, $2, $3, $4, $5) RETURNING id`
 	stmt2, err := db.PrepareContext(ctx, query2)
 	if err != nil {
 		return
 	}
 
-	log.Print("PASS 3")
 	for _, v := range listTransactionDetail {
 		var lastID int32
 		err := stmt2.QueryRowContext(ctx, lastIDTransaction, v.Item, v.Price, v.Quantity, v.Total).Scan(&lastID)
