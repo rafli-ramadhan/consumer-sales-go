@@ -19,33 +19,12 @@ type TransactionDetail struct {
 	Transaction Transaction
 }
 
-type TransactionRequest struct {
-	Name		string	`json:"name"`
-	Quantity	int		`json:"quantity"`
-	Discount	float64	`json:"discount"`
-	Total		float64	`json:"total"`
-	Pay			float64	`json:"pay"`
+type RabbitMQData struct {
+	RandomInteger 			int
+	Name		  			string
+	Quantity	  			int
+	Total		  			float64
+	Discount	  			float64
+	Pay			  			float64
+	ListTransactionDetail	[]TransactionDetail
 }
-
-type TransactionDetailItemRequest struct {	
-	Item        string	`json:"item"`
-	Quantity    int		`json:"quantity"`
-}
-
-type TransactionDetailBulkRequest struct {
-	Items	[]TransactionDetailItemRequest
-	Name	string 	`json:"name"`
-	Pay		float64 `json:"pay"`
-}
-
-type TransactionResponseData struct {
-	Status  int					`json:"status"`
-	Message string				`json:"message"`
-	Data	[]TransactionDetail	`json:"data"`
-}
-
-var Total float64
-
-var TransactionSlice []Transaction = []Transaction{}
-
-var TransactionDetailSlice []TransactionDetail = []TransactionDetail{}
